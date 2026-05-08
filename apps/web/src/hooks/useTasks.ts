@@ -29,10 +29,24 @@ export const useCreateTask = (projectId: string) => {
       await qc.cancelQueries({ queryKey: queryKeys.tasks.all(projectId) });
       const previous = qc.getQueryData<Task[]>(queryKeys.tasks.all(projectId));
 
-      qc.setQueryData<Task[]>(queryKeys.tasks.all(projectId), (old = []) => [
-        ...old,
-        { ...newTask, id: `temp-${Date.now()}`, projectId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), position: old.length, status: (newTask.status || 'todo') as Task['status'], priority: (newTask.priority || 'medium') as Task['priority'], createdById: '', createdBy: { id: '', email: '', name: '' } } as Task,
-      ]);
+      qc.setQueryData<Task[]>(queryKeys.tasks.all(projectId), (old = []) => {
+        const tempTask: Task = {
+          id: `temp-${Date.now()}`,
+          title: newTask.title,
+          description: newTask.description,
+          status: (newTask.status as Task['status']) ?? 'todo',
+          priority: (newTask.priority as Task['priority']) ?? 'medium',
+          projectId,
+          assigneeId: newTask.assigneeId,
+          dueDate: newTask.dueDate,
+          createdById: '',
+          createdBy: { id: '', email: '', name: '', createdAt: '' },
+          position: old.length,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return [...old, tempTask];
+      });
 
       return { previous };
     },
@@ -102,13 +116,16 @@ export const useAddComment = (taskId: string) => {
 
       qc.setQueryData<Task>(queryKeys.tasks.detail(taskId), (old) => {
         if (!old) return old;
-        return {
-          ...old,
-          comments: [
-            ...(old.comments || []),
-            { id: `temp-${Date.now()}`, content, taskId, userId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as Comment,
-          ],
+        const tempComment: Comment = {
+          id: `temp-${Date.now()}`,
+          content,
+          taskId,
+          userId: '',
+          user: { id: '', email: '', name: '', createdAt: '' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
+        return { ...old, comments: [...(old.comments ?? []), tempComment] };
       });
 
       return { previous };
