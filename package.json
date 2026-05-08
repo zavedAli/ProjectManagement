@@ -1,0 +1,13 @@
+{
+  "name": "project-management-platform",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:api": "cd apps/api && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "db:push": "cd apps/api && npx prisma db push",
+    "db:migrate": "cd apps/api && npx prisma migrate dev",
+    "db:seed": "cd apps/api && npx tsx prisma/seed.ts",
+    "db:studio": "cd apps/api && npx prisma studio"
+  }
+}
