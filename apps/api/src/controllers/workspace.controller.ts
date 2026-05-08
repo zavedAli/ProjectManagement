@@ -14,7 +14,7 @@ export const workspaceController = {
 
   async getById(req: AuthRequest, res: Response) {
     try {
-      const workspace = await workspaceService.getById(req.params.id, req.user!.userId);
+      const workspace = await workspaceService.getById(String(req.params.id), req.user!.userId);
       res.json(workspace);
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
@@ -33,7 +33,7 @@ export const workspaceController = {
 
   async update(req: AuthRequest, res: Response) {
     try {
-      const workspace = await workspaceService.update(req.params.id, req.user!.userId, req.body);
+      const workspace = await workspaceService.update(String(req.params.id), req.user!.userId, req.body);
       res.json(workspace);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });

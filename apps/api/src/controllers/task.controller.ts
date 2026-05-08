@@ -19,7 +19,7 @@ export const taskController = {
 
   async getById(req: AuthRequest, res: Response) {
     try {
-      const task = await taskService.getById(req.params.id, req.user!.userId);
+      const task = await taskService.getById(String(req.params.id), req.user!.userId);
       res.json(task);
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
@@ -38,7 +38,7 @@ export const taskController = {
 
   async update(req: AuthRequest, res: Response) {
     try {
-      const task = await taskService.update(req.params.id, req.user!.userId, req.body);
+      const task = await taskService.update(String(req.params.id), req.user!.userId, req.body);
       res.json(task);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
@@ -47,7 +47,7 @@ export const taskController = {
 
   async delete(req: AuthRequest, res: Response) {
     try {
-      await taskService.delete(req.params.id, req.user!.userId);
+      await taskService.delete(String(req.params.id), req.user!.userId);
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
@@ -57,7 +57,7 @@ export const taskController = {
   async addComment(req: AuthRequest, res: Response) {
     try {
       const { content } = req.body;
-      const comment = await taskService.addComment(req.params.id, req.user!.userId, content);
+      const comment = await taskService.addComment(String(req.params.id), req.user!.userId, content);
       res.status(201).json(comment);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });

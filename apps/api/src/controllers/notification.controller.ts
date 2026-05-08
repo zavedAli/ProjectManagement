@@ -23,7 +23,7 @@ export const notificationController = {
 
   async markAsRead(req: AuthRequest, res: Response) {
     try {
-      const notification = await notificationService.markAsRead(req.params.id, req.user!.userId);
+      const notification = await notificationService.markAsRead(String(req.params.id), req.user!.userId);
       res.json(notification);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });

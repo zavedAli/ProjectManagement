@@ -19,7 +19,7 @@ export const projectController = {
 
   async getById(req: AuthRequest, res: Response) {
     try {
-      const project = await projectService.getById(req.params.id, req.user!.userId);
+      const project = await projectService.getById(String(req.params.id), req.user!.userId);
       res.json(project);
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
@@ -38,7 +38,7 @@ export const projectController = {
 
   async update(req: AuthRequest, res: Response) {
     try {
-      const project = await projectService.update(req.params.id, req.user!.userId, req.body);
+      const project = await projectService.update(String(req.params.id), req.user!.userId, req.body);
       res.json(project);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
@@ -47,7 +47,7 @@ export const projectController = {
 
   async delete(req: AuthRequest, res: Response) {
     try {
-      await projectService.delete(req.params.id, req.user!.userId);
+      await projectService.delete(String(req.params.id), req.user!.userId);
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
