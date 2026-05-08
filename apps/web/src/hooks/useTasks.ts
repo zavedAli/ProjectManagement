@@ -31,7 +31,7 @@ export const useCreateTask = (projectId: string) => {
 
       qc.setQueryData<Task[]>(queryKeys.tasks.all(projectId), (old = []) => [
         ...old,
-        { ...newTask, id: `temp-${Date.now()}`, projectId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), position: old.length } as Task,
+        { ...newTask, id: `temp-${Date.now()}`, projectId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), position: old.length, status: (newTask.status || 'todo') as Task['status'], priority: (newTask.priority || 'medium') as Task['priority'], createdById: '', createdBy: { id: '', email: '', name: '' } } as Task,
       ]);
 
       return { previous };
