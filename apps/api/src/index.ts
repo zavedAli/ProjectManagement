@@ -36,6 +36,19 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.post('/api/seed', async (req, res) => {
+  if (req.headers['x-seed-secret'] !== process.env.SEED_SECRET) {
+    res.status(401).json({ error: 'Unauthorized' }); return;
+  }
+  try {
+    const { execSync } = await import('child_process');
+    execSync('npx tsx prisma/seed.ts', { stdio: 'inherit' });
+    res.json({ message: 'Database seeded successfully' });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/projects', projectRoutes);
