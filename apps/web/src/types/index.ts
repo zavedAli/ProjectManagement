@@ -56,6 +56,7 @@ export interface Task {
   assignee?: User;
   createdBy: User;
   labels?: TaskLabel[];
+  comments?: Comment[];
   _count?: { comments: number };
 }
 
