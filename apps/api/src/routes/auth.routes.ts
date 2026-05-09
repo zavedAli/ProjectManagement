@@ -10,5 +10,6 @@ router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.me);
 router.patch('/avatar', authenticate, authController.updateAvatar);
+router.post('/github', authController.githubOAuth);
 
 export default router;

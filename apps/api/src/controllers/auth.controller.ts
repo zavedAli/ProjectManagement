@@ -91,4 +91,23 @@ export const authController = {
       res.status(400).json({ error: (error as Error).message });
     }
   },
+
+  async githubOAuth(req: AuthRequest, res: Response) {
+    try {
+      const { code } = req.body;
+      if (!code) { res.status(400).json({ error: 'code required' }); return; }
+      const result = await authService.githubOAuth(code);
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.json({ user: result.user, accessToken: result.accessToken });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  },
 };

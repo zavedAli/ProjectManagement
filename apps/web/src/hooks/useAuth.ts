@@ -66,3 +66,17 @@ export const useUpdateAvatar = () => {
     },
   });
 };
+
+export const useGithubOAuth = () => {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: (code: string) => authApi.githubOAuth(code),
+    onSuccess: (data) => {
+      localStorage.setItem('accessToken', data.accessToken);
+      qc.setQueryData(queryKeys.auth.me(), data.user);
+      navigate('/');
+    },
+  });
+};

@@ -30,4 +30,9 @@ export const authApi = {
     const { data } = await apiClient.patch('/auth/avatar', { avatarUrl });
     return data;
   },
+
+  githubOAuth: async (code: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post('/auth/github', { code });
+    return data;
+  },
 };
