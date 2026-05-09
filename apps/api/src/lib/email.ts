@@ -1,19 +1,26 @@
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 export const emailService = {
   async sendOTP(email: string, otp: string, name: string) {
-    // If Resend not configured, log to console (dev mode)
-    if (!process.env.RESEND_API_KEY) {
-      console.log(`\n📧 OTP Email (Resend not configured):\nTo: ${email}\nCode: ${otp}\n`);
+    // Always log OTP in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`\n📧 OTP for ${email}: ${otp}\n`);
+    }
+
+    // If SendGrid not configured, skip email
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
+      console.log('⚠️  SendGrid not configured, skipping email');
       return;
     }
 
     try {
-      await resend.emails.send({
-        from: 'Project Management <onboarding@resend.dev>',
+      await sgMail.send({
         to: email,
+        from: process.env.SENDGRID_FROM_EMAIL,
         subject: 'Verify your email - Project Management Platform',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -30,9 +37,6 @@ export const emailService = {
       console.log(`✅ OTP email sent to ${email}`);
     } catch (error) {
       console.error('❌ Failed to send email:', error);
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`📧 FALLBACK - OTP for ${email}: ${otp}`);
-      }
     }
   },
 };
