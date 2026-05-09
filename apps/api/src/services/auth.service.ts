@@ -98,7 +98,7 @@ export const authService = {
       { headers: { Accept: 'application/json' } }
     );
 
-    if (tokenData.error) throw new Error('GitHub OAuth failed');
+    if (tokenData.error) throw new Error(`GitHub OAuth failed: ${tokenData.error_description || tokenData.error}`);
 
     // Get GitHub user info
     const { data: githubUser } = await axios.get('https://api.github.com/user', {
