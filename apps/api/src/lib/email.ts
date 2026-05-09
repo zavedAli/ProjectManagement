@@ -1,26 +1,18 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const emailService = {
   async sendOTP(email: string, otp: string, name: string) {
-    // If SMTP not configured, log to console (dev mode)
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.log(`\n📧 OTP Email (SMTP not configured):\nTo: ${email}\nCode: ${otp}\n`);
+    // If Resend not configured, log to console (dev mode)
+    if (!process.env.RESEND_API_KEY) {
+      console.log(`\n📧 OTP Email (Resend not configured):\nTo: ${email}\nCode: ${otp}\n`);
       return;
     }
 
     try {
-      const mailOptions = {
-        from: `"Project Management" <${process.env.SMTP_USER}>`,
+      await resend.emails.send({
+        from: 'Project Management <onboarding@resend.dev>',
         to: email,
         subject: 'Verify your email - Project Management Platform',
         html: `
@@ -34,14 +26,13 @@ export const emailService = {
             <p>If you didn't request this, please ignore this email.</p>
           </div>
         `,
-      };
-
-      await transporter.sendMail(mailOptions);
+      });
       console.log(`✅ OTP email sent to ${email}`);
     } catch (error) {
       console.error('❌ Failed to send email:', error);
-      console.log(`📧 FALLBACK - OTP for ${email}: ${otp}`);
-      // Don't throw - allow registration to continue, user can use resend
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`📧 FALLBACK - OTP for ${email}: ${otp}`);
+      }
     }
   },
 };
