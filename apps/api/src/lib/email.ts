@@ -12,7 +12,8 @@ const transporter = nodemailer.createTransport({
 
 export const emailService = {
   async sendOTP(email: string, otp: string, name: string) {
-    const mailOptions = {
+    try {
+      const mailOptions = {
       from: `"Project Management" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Verify your email - Project Management Platform',
@@ -30,5 +31,10 @@ export const emailService = {
     };
 
     await transporter.sendMail(mailOptions);
+    console.log(`✅ OTP email sent to ${email}`);
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    console.log(`📧 OTP for ${email}: ${otp}`);
+  }
   },
 };
