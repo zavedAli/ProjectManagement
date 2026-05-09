@@ -7,6 +7,16 @@ export const authController = {
     try {
       const { email, password, name } = req.body;
       const result = await authService.register(email, password, name);
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  },
+
+  async verifyOTP(req: AuthRequest, res: Response) {
+    try {
+      const { email, otp } = req.body;
+      const result = await authService.verifyOTP(email, otp);
 
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,
@@ -15,10 +25,17 @@ export const authController = {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.status(201).json({
-        user: result.user,
-        accessToken: result.accessToken,
-      });
+      res.json({ user: result.user, accessToken: result.accessToken });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  },
+
+  async resendOTP(req: AuthRequest, res: Response) {
+    try {
+      const { email } = req.body;
+      const result = await authService.resendOTP(email);
+      res.json(result);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
     }
@@ -97,6 +114,25 @@ export const authController = {
       const { code } = req.body;
       if (!code) { res.status(400).json({ error: 'code required' }); return; }
       const result = await authService.githubOAuth(code);
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.json({ user: result.user, accessToken: result.accessToken });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  },
+
+  async googleOAuth(req: AuthRequest, res: Response) {
+    try {
+      const { token } = req.body;
+      if (!token) { res.status(400).json({ error: 'token required' }); return; }
+      const result = await authService.googleOAuth(token);
 
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,

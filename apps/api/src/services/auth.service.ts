@@ -1,7 +1,13 @@
 import bcrypt from 'bcryptjs';
 import axios from 'axios';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma.js';
+import { emailService } from '../lib/email.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, getRefreshTokenExpiry } from '../lib/jwt.js';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 export const authService = {
   async register(email: string, password: string, name: string) {
@@ -9,16 +15,39 @@ export const authService = {
     if (existing) throw new Error('User already exists');
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, name },
-      select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true },
+      data: { email, password: hashedPassword, name, otp, otpExpiry, emailVerified: false },
+      select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true, emailVerified: true },
     });
 
-    // Auto-create a default workspace for the new user
-    const slug = `${name.toLowerCase().replace(/\s+/g, '-')}-${user.id.slice(-6)}`;
+    // Send OTP email
+    await emailService.sendOTP(email, otp, name);
+
+    return { user, message: 'Please check your email for verification code' };
+  },
+
+  async verifyOTP(email: string, otp: string) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) throw new Error('User not found');
+    if (user.emailVerified) throw new Error('Email already verified');
+    if (!user.otp || !user.otpExpiry) throw new Error('No OTP found');
+    if (user.otpExpiry < new Date()) throw new Error('OTP expired');
+    if (user.otp !== otp) throw new Error('Invalid OTP');
+
+    // Mark as verified and clear OTP
+    await prisma.user.update({
+      where: { email },
+      data: { emailVerified: true, otp: null, otpExpiry: null },
+    });
+
+    // Auto-create workspace
+    const slug = `${user.name.toLowerCase().replace(/\s+/g, '-')}-${user.id.slice(-6)}`;
     await prisma.workspace.create({
       data: {
-        name: `${name}'s Workspace`,
+        name: `${user.name}'s Workspace`,
         slug,
         members: { create: { userId: user.id, role: 'owner' } },
       },
@@ -31,12 +60,34 @@ export const authService = {
       data: { token: refreshToken, userId: user.id, expiresAt: getRefreshTokenExpiry() },
     });
 
-    return { user, accessToken, refreshToken };
+    return {
+      user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl },
+      accessToken,
+      refreshToken,
+    };
+  },
+
+  async resendOTP(email: string) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) throw new Error('User not found');
+    if (user.emailVerified) throw new Error('Email already verified');
+
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { email },
+      data: { otp, otpExpiry },
+    });
+
+    await emailService.sendOTP(email, otp, user.name);
+    return { message: 'OTP resent successfully' };
   },
 
   async login(email: string, password: string) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error('Invalid credentials');
+    if (!user.emailVerified) throw new Error('Please verify your email first');
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new Error('Invalid credentials');
@@ -128,6 +179,58 @@ export const authService = {
       user = await prisma.user.update({
         where: { email },
         data: { avatarUrl: githubUser.avatar_url },
+      });
+    }
+
+    // Auto-create workspace for new users
+    if (isNewUser) {
+      const slug = `${user.name.toLowerCase().replace(/\s+/g, '-')}-${user.id.slice(-6)}`;
+      await prisma.workspace.create({
+        data: {
+          name: `${user.name}'s Workspace`,
+          slug,
+          members: { create: { userId: user.id, role: 'owner' } },
+        },
+      });
+    }
+
+    const accessToken = generateAccessToken({ userId: user.id, email: user.email });
+    const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+
+    await prisma.refreshToken.create({
+      data: { token: refreshToken, userId: user.id, expiresAt: getRefreshTokenExpiry() },
+    });
+
+    return {
+      user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl },
+      accessToken,
+      refreshToken,
+    };
+  },
+
+  async googleOAuth(token: string) {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) throw new Error('Invalid Google token');
+
+    const { email, name, picture } = payload;
+
+    // Upsert user
+    let user = await prisma.user.findUnique({ where: { email } });
+    const isNewUser = !user;
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: { email, name: name || email.split('@')[0], password: '', avatarUrl: picture, emailVerified: true },
+      });
+    } else if (!user.emailVerified) {
+      user = await prisma.user.update({
+        where: { email },
+        data: { emailVerified: true, avatarUrl: picture },
       });
     }
 

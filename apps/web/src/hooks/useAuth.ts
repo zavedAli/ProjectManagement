@@ -28,17 +28,29 @@ export const useLogin = () => {
 };
 
 export const useRegister = () => {
+  return useMutation({
+    mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
+      authApi.register(email, password, name),
+  });
+};
+
+export const useVerifyOTP = () => {
   const qc = useQueryClient();
   const navigate = useNavigate();
 
   return useMutation({
-    mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
-      authApi.register(email, password, name),
+    mutationFn: ({ email, otp }: { email: string; otp: string }) => authApi.verifyOTP(email, otp),
     onSuccess: (data) => {
       localStorage.setItem('accessToken', data.accessToken);
       qc.setQueryData(queryKeys.auth.me(), data.user);
       navigate('/');
     },
+  });
+};
+
+export const useResendOTP = () => {
+  return useMutation({
+    mutationFn: (email: string) => authApi.resendOTP(email),
   });
 };
 
@@ -73,6 +85,20 @@ export const useGithubOAuth = () => {
 
   return useMutation({
     mutationFn: (code: string) => authApi.githubOAuth(code),
+    onSuccess: (data) => {
+      localStorage.setItem('accessToken', data.accessToken);
+      qc.setQueryData(queryKeys.auth.me(), data.user);
+      navigate('/');
+    },
+  });
+};
+
+export const useGoogleOAuth = () => {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: (token: string) => authApi.googleOAuth(token),
     onSuccess: (data) => {
       localStorage.setItem('accessToken', data.accessToken);
       qc.setQueryData(queryKeys.auth.me(), data.user);

@@ -5,6 +5,7 @@ import { queryClient } from './lib/queryClient';
 import { ProtectedRoute } from './router/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
+import { VerifyOTPPage } from './features/auth/VerifyOTPPage';
 import { GithubCallbackPage } from './features/auth/GithubCallbackPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
@@ -17,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-otp" element={<VerifyOTPPage />} />
           <Route path="/auth/github/callback" element={<GithubCallbackPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<DashboardPage />} />

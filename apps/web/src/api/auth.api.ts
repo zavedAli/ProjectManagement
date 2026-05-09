@@ -2,8 +2,18 @@ import { apiClient } from './client';
 import type { AuthResponse, User } from '../types';
 
 export const authApi = {
-  register: async (email: string, password: string, name: string): Promise<AuthResponse> => {
+  register: async (email: string, password: string, name: string): Promise<{ user: User; message: string }> => {
     const { data } = await apiClient.post('/auth/register', { email, password, name });
+    return data;
+  },
+
+  verifyOTP: async (email: string, otp: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post('/auth/verify-otp', { email, otp });
+    return data;
+  },
+
+  resendOTP: async (email: string): Promise<{ message: string }> => {
+    const { data } = await apiClient.post('/auth/resend-otp', { email });
     return data;
   },
 
@@ -33,6 +43,11 @@ export const authApi = {
 
   githubOAuth: async (code: string): Promise<AuthResponse> => {
     const { data } = await apiClient.post('/auth/github', { code });
+    return data;
+  },
+
+  googleOAuth: async (token: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post('/auth/google', { token });
     return data;
   },
 };
