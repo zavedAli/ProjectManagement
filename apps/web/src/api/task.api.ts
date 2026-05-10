@@ -7,6 +7,11 @@ export const taskApi = {
     return data;
   },
 
+  getAllPaginated: async (projectId: string, skip: number, take: number, signal?: AbortSignal, search?: string): Promise<Task[]> => {
+    const { data } = await apiClient.get('/tasks', { params: { projectId, skip, take, ...(search ? { search } : {}) }, signal });
+    return data;
+  },
+
   getById: async (id: string, signal?: AbortSignal): Promise<Task> => {
     const { data } = await apiClient.get(`/tasks/${id}`, { signal });
     return data;
@@ -29,5 +34,18 @@ export const taskApi = {
   addComment: async (taskId: string, content: string): Promise<Comment> => {
     const { data } = await apiClient.post(`/tasks/${taskId}/comments`, { content });
     return data;
+  },
+
+  uploadAttachment: async (taskId: string, file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post(`/tasks/${taskId}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  deleteAttachment: async (attachmentId: string): Promise<void> => {
+    await apiClient.delete(`/attachments/${attachmentId}`);
   },
 };

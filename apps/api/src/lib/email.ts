@@ -40,3 +40,28 @@ export const emailService = {
     }
   },
 };
+
+export const sendEmail = async ({ to, subject, html }: { to: string; subject: string; html: string }) => {
+  // Always log in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n📧 Email to ${to}: ${subject}\n`);
+  }
+
+  // If SendGrid not configured, skip email
+  if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
+    console.log('⚠️  SendGrid not configured, skipping email');
+    return;
+  }
+
+  try {
+    await sgMail.send({
+      to,
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject,
+      html,
+    });
+    console.log(`✅ Email sent to ${to}`);
+  } catch (error) {
+    console.error('❌ Failed to send email:', error);
+  }
+};

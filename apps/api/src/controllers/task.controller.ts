@@ -5,12 +5,20 @@ import { taskService } from '../services/task.service.js';
 export const taskController = {
   async getAll(req: AuthRequest, res: Response) {
     try {
-      const { projectId, search, sortBy, sortOrder } = req.query;
+      const { projectId, search, sortBy, sortOrder, skip, take } = req.query;
       if (!projectId) {
         res.status(400).json({ error: 'projectId required' });
         return;
       }
-      const tasks = await taskService.getAll(projectId as string, req.user!.userId, search as string | undefined, sortBy as string | undefined, sortOrder as string | undefined);
+      const tasks = await taskService.getAll(
+        projectId as string,
+        req.user!.userId,
+        search as string | undefined,
+        sortBy as string | undefined,
+        sortOrder as string | undefined,
+        skip ? parseInt(skip as string) : undefined,
+        take ? parseInt(take as string) : undefined
+      );
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
@@ -59,6 +67,28 @@ export const taskController = {
       const { content } = req.body;
       const comment = await taskService.addComment(String(req.params.id), req.user!.userId, content);
       res.status(201).json(comment);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  },
+
+  async uploadAttachment(req: AuthRequest, res: Response) {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
+      }
+      const attachment = await taskService.uploadAttachment(String(req.params.id), req.user!.userId, req.file);
+      res.status(201).json(attachment);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  },
+
+  async deleteAttachment(req: AuthRequest, res: Response) {
+    try {
+      await taskService.deleteAttachment(String(req.params.id), req.user!.userId);
+      res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
     }

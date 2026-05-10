@@ -40,26 +40,6 @@ export interface Project {
   _count?: { tasks: number };
 }
 
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  projectId: string;
-  assigneeId?: string;
-  createdById: string;
-  dueDate?: string;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
-  assignee?: User;
-  createdBy: User;
-  labels?: TaskLabel[];
-  comments?: Comment[];
-  _count?: { comments: number };
-}
-
 export interface Label {
   id: string;
   name: string;
@@ -102,6 +82,27 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface Attachment {
+  id: string;
+  filename: string;
+  url: string;
+  size: number;
+  mimeType: string;
+  taskId: string;
+  uploadedById: string;
+  createdAt: string;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  email: string;
+  workspaceId: string;
+  role: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface AuthResponse {
   user: User;
   accessToken: string;
@@ -124,4 +125,25 @@ export interface UpdateTaskDTO {
   assigneeId?: string;
   dueDate?: string;
   position?: number;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in_progress' | 'done';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  projectId: string;
+  assigneeId?: string;
+  createdById: string;
+  dueDate?: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+  assignee?: User;
+  createdBy: User;
+  labels?: TaskLabel[];
+  comments?: Comment[];
+  attachments?: Attachment[];
+  _count?: { comments: number; attachments: number };
 }

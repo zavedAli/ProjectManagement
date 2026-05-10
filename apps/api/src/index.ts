@@ -13,6 +13,8 @@ import workspaceRoutes from './routes/workspace.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import taskRoutes from './routes/task.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import invitationRoutes from './routes/invitation.routes.js';
+import projectInvitationRoutes from './routes/projectInvitation.routes.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,6 +63,8 @@ app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api', invitationRoutes);
+app.use('/api', projectInvitationRoutes);
 
 // Error handler
 app.use(errorHandler);

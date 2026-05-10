@@ -53,6 +53,7 @@ model Workspace {
 
   members  WorkspaceMember[]
   projects Project[]
+  invitations WorkspaceInvitation[]
 
   @@map("workspaces")
 }
@@ -85,6 +86,7 @@ model Project {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdBy User      @relation("ProjectCreator", fields: [createdById], references: [id])
   tasks     Task[]
+  invitations ProjectInvitation[]
 
   @@unique([workspaceId, key])
   @@map("projects")
@@ -93,7 +95,7 @@ model Project {
 model Task {
   id          String   @id @default(cuid())
   title       String
-  description String?
+  description String?  @db.Text
   status      String   @default("todo") // todo, in_progress, done
   priority    String   @default("medium") // low, medium, high, urgent
   projectId   String
@@ -110,6 +112,7 @@ model Task {
   comments  Comment[]
   activities Activity[]
   labels    TaskLabel[]
+  attachments Attachment[]
 
   @@map("tasks")
 }
@@ -176,4 +179,49 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  filename  String
+  url       String
+  size      Int
+  mimeType  String
+  taskId    String
+  uploadedById String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model WorkspaceInvitation {
+  id          String   @id @default(cuid())
+  email       String
+  workspaceId String
+  role        String   @default("member")
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@map("workspace_invitations")
+}
+
+model ProjectInvitation {
+  id          String   @id @default(cuid())
+  email       String
+  projectId   String
+  role        String   @default("view") // view, edit
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, email])
+  @@map("project_invitations")
 }

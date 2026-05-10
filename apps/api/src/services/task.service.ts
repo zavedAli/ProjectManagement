@@ -1,7 +1,8 @@
 import { prisma } from '../lib/prisma.js';
+import { uploadToCloudinary, deleteFromCloudinary } from '../lib/cloudinary.js';
 
 export const taskService = {
-  async getAll(projectId: string, userId: string, search?: string, sortBy?: string, sortOrder?: string) {
+  async getAll(projectId: string, userId: string, search?: string, sortBy?: string, sortOrder?: string, skip?: number, take?: number) {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: { workspace: { include: { members: { where: { userId } } } } },
@@ -17,13 +18,16 @@ export const taskService = {
         assignee: { select: { id: true, name: true, email: true, avatarUrl: true } },
         createdBy: { select: { id: true, name: true, email: true, avatarUrl: true } },
         labels: { include: { label: true } },
-        _count: { select: { comments: true } },
+        attachments: { orderBy: { createdAt: 'desc' } },
+        _count: { select: { comments: true, attachments: true } },
       },
       orderBy: sortBy === 'dueDate'
         ? { dueDate: (sortOrder === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc' }
         : sortBy === 'priority'
         ? { priority: (sortOrder === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc' }
         : { position: 'asc' },
+      skip: skip ?? undefined,
+      take: take ?? undefined,
     });
   },
 
@@ -35,6 +39,7 @@ export const taskService = {
         assignee: { select: { id: true, name: true, email: true, avatarUrl: true } },
         createdBy: { select: { id: true, name: true, email: true, avatarUrl: true } },
         labels: { include: { label: true } },
+        attachments: { orderBy: { createdAt: 'desc' } },
         comments: {
           include: { user: { select: { id: true, name: true, avatarUrl: true } } },
           orderBy: { createdAt: 'desc' },
@@ -187,5 +192,53 @@ export const taskService = {
     });
 
     return comment;
+  },
+
+  async uploadAttachment(taskId: string, userId: string, file: Express.Multer.File) {
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: { project: { include: { workspace: { include: { members: { where: { userId } } } } } } },
+    });
+
+    if (!task || task.project.workspace.members.length === 0) {
+      throw new Error('Unauthorized');
+    }
+
+    const { url } = await uploadToCloudinary(file);
+
+    const attachment = await prisma.attachment.create({
+      data: {
+        filename: file.originalname,
+        url,
+        size: file.size,
+        mimeType: file.mimetype,
+        taskId,
+        uploadedById: userId,
+      },
+    });
+
+    await prisma.activity.create({
+      data: {
+        type: 'attachment_added',
+        content: `uploaded ${file.originalname}`,
+        taskId,
+        userId,
+      },
+    });
+
+    return attachment;
+  },
+
+  async deleteAttachment(attachmentId: string, userId: string) {
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: { task: { include: { project: { include: { workspace: { include: { members: { where: { userId } } } } } } } } },
+    });
+
+    if (!attachment || attachment.task.project.workspace.members.length === 0) {
+      throw new Error('Unauthorized');
+    }
+
+    await prisma.attachment.delete({ where: { id: attachmentId } });
   },
 };

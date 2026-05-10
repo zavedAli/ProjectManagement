@@ -2,7 +2,10 @@ import { useParams, Link } from 'react-router-dom';
 import { useProject } from '../../hooks/useProjects';
 import { useTasks, useCreateTask, useUpdateTask } from '../../hooks/useTasks';
 import { useDebounce } from '../../hooks/useDebounce';
-import { Avatar } from '../../components/ui/Avatar';
+import { KanbanBoard } from '../../components/ui/KanbanBoard';
+import { RichTextEditor } from '../../components/ui/RichTextEditor2';
+import { TaskDetailModal } from '../../components/ui/TaskDetailModal';
+import { ProjectInvitations } from '../../components/ui/ProjectInvitations';
 import { useState } from 'react';
 import type { Task } from '../../types';
 
@@ -13,34 +16,11 @@ const PRIORITY_STYLES: Record<string, string> = {
   urgent: 'bg-red-100 text-red-700',
 };
 
-const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
-
-const isOverdue = (dueDate?: string) => !!dueDate && new Date(dueDate) < new Date();
-const formatDate = (date: string) =>
-  new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-type SortKey = 'default' | 'dueDate' | 'priority' | 'assignee';
-
-const sortTasks = (tasks: Task[], sortBy: SortKey): Task[] => {
-  if (sortBy === 'default') return tasks;
-  return [...tasks].sort((a, b) => {
-    if (sortBy === 'dueDate') {
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    }
-    if (sortBy === 'priority') return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-    if (sortBy === 'assignee') return (a.assignee?.name || '').localeCompare(b.assignee?.name || '');
-    return 0;
-  });
-};
-
 export const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { data: project, isLoading: projectLoading } = useProject(id!);
 
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortKey>('default');
   const debouncedSearch = useDebounce(search);
   const { data: tasks, isLoading: tasksLoading } = useTasks(id!, debouncedSearch || undefined);
 
@@ -48,34 +28,30 @@ export const ProjectDetailPage = () => {
   const updateTask = useUpdateTask();
 
   const [showForm, setShowForm] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [dueDate, setDueDate] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createTask.mutate(
-      { title, status: 'todo', priority, dueDate: dueDate || undefined },
+      { title, description, status: 'todo', priority, dueDate: dueDate || undefined },
       {
         onSuccess: () => {
-          setTitle(''); setPriority('medium'); setDueDate(''); setShowForm(false);
+          setTitle(''); setDescription(''); setPriority('medium'); setDueDate(''); setShowForm(false);
         },
       }
     );
   };
 
-  const handleStatusChange = (task: Task, newStatus: string) => {
-    updateTask.mutate({ id: task.id, updates: { status: newStatus } });
+  const handleTaskMove = (taskId: string, newStatus: string, newPosition: number) => {
+    updateTask.mutate({ id: taskId, updates: { status: newStatus, position: newPosition } });
   };
 
   if (projectLoading || tasksLoading) return <div className="p-8">Loading...</div>;
   if (!project) return <div className="p-8">Project not found</div>;
-
-  const tasksByStatus = {
-    todo: sortTasks(tasks?.filter((t) => t.status === 'todo') || [], sortBy),
-    in_progress: sortTasks(tasks?.filter((t) => t.status === 'in_progress') || [], sortBy),
-    done: sortTasks(tasks?.filter((t) => t.status === 'done') || [], sortBy),
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,56 +69,60 @@ export const ProjectDetailPage = () => {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold">{project.name}</h2>
-            <p className="text-gray-600">{project.key}</p>
+            <ProjectInvitations projectId={id!} />
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">{project.name}</h2>
+            <p className="text-gray-500 mt-1 font-medium">{project.key}</p>
           </div>
 
           <div className="flex items-center gap-3 mb-6 flex-wrap">
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
             >
-              New Task
+              + New Task
             </button>
             <input
               type="text"
               placeholder="Search tasks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2.5 border border-gray-300 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="default">Sort: Default</option>
-              <option value="dueDate">Sort: Due Date</option>
-              <option value="priority">Sort: Priority</option>
-              <option value="assignee">Sort: Assignee</option>
-            </select>
           </div>
 
           {showForm && (
-            <div className="bg-white p-6 rounded-lg shadow mb-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="bg-white p-6 rounded-xl shadow-lg mb-6 border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Create New Task</h3>
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Title *</label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter task title"
                     required
                   />
                 </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700">Priority</label>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                  <RichTextEditor
+                    content={description}
+                    onChange={setDescription}
+                    placeholder="Add a detailed description..."
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
                     <select
                       value={priority}
                       onChange={(e) => setPriority(e.target.value)}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -150,25 +130,29 @@ export const ProjectDetailPage = () => {
                       <option value="urgent">Urgent</option>
                     </select>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Due Date</label>
                     <input
                       type="date"
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
                     disabled={createTask.isPending}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                   >
-                    {createTask.isPending ? 'Creating...' : 'Create'}
+                    {createTask.isPending ? 'Creating...' : 'Create Task'}
                   </button>
-                  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowForm(false)} 
+                    className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  >
                     Cancel
                   </button>
                 </div>
@@ -176,58 +160,11 @@ export const ProjectDetailPage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {(['todo', 'in_progress', 'done'] as const).map((status) => (
-              <div key={status} className="bg-gray-100 p-4 rounded-lg">
-                <h3 className="font-medium mb-4 capitalize">
-                  {status.replace('_', ' ')} ({tasksByStatus[status].length})
-                </h3>
-                <div className="space-y-3">
-                  {tasksByStatus[status].map((task) => (
-                    <div
-                      key={task.id}
-                      className={`bg-white p-4 rounded shadow ${isOverdue(task.dueDate) && status !== 'done' ? 'border-l-4 border-red-500' : ''}`}
-                    >
-                      <h4 className="font-medium">{task.title}</h4>
+          <KanbanBoard tasks={tasks || []} onTaskMove={handleTaskMove} onTaskClick={setSelectedTask} />
 
-                      <div className="mt-2 flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_STYLES[task.priority]}`}>
-                          {task.priority}
-                        </span>
-                        {task.dueDate && (
-                          <span className={`text-xs ${isOverdue(task.dueDate) && status !== 'done' ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                            {isOverdue(task.dueDate) && status !== 'done' ? '⚠ ' : ''}Due {formatDate(task.dueDate)}
-                          </span>
-                        )}
-                      </div>
-
-                      {task.assignee && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Avatar name={task.assignee.name} avatarUrl={task.assignee.avatarUrl} size="sm" />
-                          <span className="text-sm text-gray-600">{task.assignee.name}</span>
-                        </div>
-                      )}
-
-                      <div className="mt-3 flex space-x-2">
-                        {status !== 'todo' && (
-                          <button
-                            onClick={() => handleStatusChange(task, status === 'done' ? 'in_progress' : 'todo')}
-                            className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                          >←</button>
-                        )}
-                        {status !== 'done' && (
-                          <button
-                            onClick={() => handleStatusChange(task, status === 'todo' ? 'in_progress' : 'done')}
-                            className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                          >→</button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          {selectedTask && (
+            <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+          )}
         </div>
       </main>
     </div>
