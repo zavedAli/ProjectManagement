@@ -7,7 +7,7 @@ export const invitationController = {
     try {
       const { workspaceId } = req.params;
       const { email, role } = req.body;
-      const invitation = await invitationService.sendInvitation(workspaceId, email, role, req.user!.userId);
+      const invitation = await invitationService.sendInvitation(workspaceId as string, email, role, req.user!.userId);
       res.status(201).json(invitation);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
@@ -27,7 +27,7 @@ export const invitationController = {
   async getInvitations(req: AuthRequest, res: Response) {
     try {
       const { workspaceId } = req.params;
-      const invitations = await invitationService.getInvitations(workspaceId, req.user!.userId);
+      const invitations = await invitationService.getInvitations(workspaceId as string, req.user!.userId);
       res.json(invitations);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
@@ -36,7 +36,7 @@ export const invitationController = {
 
   async revokeInvitation(req: AuthRequest, res: Response) {
     try {
-      await invitationService.revokeInvitation(req.params.id, req.user!.userId);
+      await invitationService.revokeInvitation(req.params.id as string, req.user!.userId);
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
